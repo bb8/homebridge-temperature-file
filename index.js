@@ -19,7 +19,7 @@ function TemperatureFileAccessory(log, config) {
   var changeAction = function(data) {
     service
       .getCharacteristic(Characteristic.CurrentTemperature)
-      .setProps({unit: Characteristic.Units.CELSIUS, minValue: -100})
+      .setProps({unit: Characteristic.Units.CELSIUS, minValue: -100, maxValue: 100, minStep: 0.01})
       .setValue(data);
   }
 
