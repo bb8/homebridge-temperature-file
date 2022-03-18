@@ -1,4 +1,5 @@
 var fs = require('fs');
+var chokidar = require("chokidar");
 var Service, Characteristic;
 
 module.exports = function(homebridge) {
@@ -13,22 +14,27 @@ function TemperatureFileAccessory(log, config) {
   this.name = config["name"];
   this.filePath = config["file_path"];
 
-  this.service = new Service.TemperatureSensor(this.name);
+  var service = new Service.TemperatureSensor(this.name);
 
-  this.service
-    .getCharacteristic(Characteristic.CurrentTemperature)
-    .on('get', this.getState.bind(this));
-}
+  var changeAction = function(data) {
+    service
+      .getCharacteristic(Characteristic.CurrentTemperature)
+      .setProps({unit: Characteristic.Units.CELSIUS, minValue: -100})
+      .setValue(data);
+  }
 
-TemperatureFileAccessory.prototype.getState = function(callback) {
-  fs.readFile(this.filePath, 'utf8', function(err, data) {
-    if (err) {
-      callback(err);
-      return
-    }
+  var changeHandler = function(path, stats) {
+    fs.readFile(this.filePath, 'utf8', function(err, data) {
+      changeAction(err ? null : parseFloat(data));
+    })
+  }.bind(this);
 
-    callback(null, parseFloat(data))
-  })
+  var watcher = chokidar.watch(this.filePath, {alwaysStat: true, usePolling: true});
+  watcher.on('add', changeHandler);
+  watcher.on('change', changeHandler);
+  watcher.on('unlink', changeHandler);
+
+  this.service = service;
 }
 
 TemperatureFileAccessory.prototype.getServices = function() {
